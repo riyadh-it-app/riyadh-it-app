@@ -150,7 +150,6 @@
     }
     calculateLiveRate();
 
-    // FIXED: Removed the invalid label typo that was breaking the function call
     function verifyViaWhatsApp() {
         const name = document.getElementById('clientName').value.trim();
         const phone = document.getElementById('clientPhone').value.trim();
@@ -167,3 +166,4 @@
 
     async function sendJobRequest() {
         checkDatabaseConnection();
+        const inputName = document.getElementById('clientName').value.trim();

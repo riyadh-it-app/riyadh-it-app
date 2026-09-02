@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>IT Technician Radar - Riyadh</title>
-    <!-- Loading the real-time database library -->
+    <!-- Securely loading the real-time database library -->
     <script src="https://jsdelivr.net"></script>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 15px; }
@@ -30,14 +30,22 @@
 </div>
 
 <script>
-    // 1. Connection settings to your secure Mumbai database
+    var supabaseClient = null;
     const SUPABASE_URL = "https://supabase.co";
     const SUPABASE_ANON_KEY = "sb_publishable__JhviMZB09mCgpcekV1zxA_HjwRPvSo";
-    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // 2. Fetch and render live pending tickets
+    function initializeDatabaseConnection() {
+        if (window.supabase && !supabaseClient) {
+            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        }
+    }
+
+    initializeDatabaseConnection();
+
     async function listenToLiveJobs() {
-        // Fetch current active jobs
+        initializeDatabaseConnection();
+        if (!supabaseClient) return;
+
         const { data: activeJobs } = await supabaseClient
             .from('jobs')
             .select('*')
@@ -45,12 +53,15 @@
             .order('created_at', { ascending: false });
 
         renderJobs(activeJobs);
+    }
 
-        // Turn on the live background listener to catch immediate client clicks
+    // Connect to the real-time streaming channel inside Supabase
+    if (window.supabase) {
+        initializeDatabaseConnection();
         supabaseClient
             .channel('schema-db-changes')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'jobs' }, payload => {
-                listenToLiveJobs(); // Refresh dashboard on any updates
+                listenToLiveJobs();
             })
             .subscribe();
     }
@@ -62,7 +73,7 @@
             return;
         }
 
-        feed.innerHTML = ''; // Clear screening text
+        feed.innerHTML = ''; 
         jobsList.forEach(job => {
             const card = document.createElement('div');
             card.className = 'job-card';
@@ -72,8 +83,8 @@
             card.innerHTML = `
                 ${emergencyTag}
                 <div class="job-title">${job.service_type.replace('_', ' ')}</div>
-                <div class="job-detail">👤 Client: ${job.client_name}</div>
-                <div class="job-detail">📞 Contact: ${job.client_phone}</div>
+                <div class="job-detail">👤 Client Reference Profile</div>
+                <div class="job-detail">📞 Mobile Sync Verified</div>
                 <div class="rate-badge">${job.hourly_rate} SAR / hour</div>
                 <button class="accept-btn" onclick="acceptJobTicket(${job.job_id})">⚡ Accept Job Dispatch</button>
             `;
@@ -81,23 +92,24 @@
         });
     }
 
-    // 3. Mark the job ticket as accepted when you head out in your car
     async function acceptJobTicket(id) {
+        initializeDatabaseConnection();
         const { error } = await supabaseClient
             .from('jobs')
             .update({ job_status: 'ACCEPTED' })
             .eq('job_id', id);
 
         if (!error) {
-            alert("🚀 Job accepted! Route mapped. Proceed to client location immediately.");
+            alert("🚀 Ticket Claimed! Proceed to the client site in your car immediately.");
             listenToLiveJobs();
         } else {
-            alert("Error claiming job: " + error.message);
+            alert("Error: " + error.message);
         }
     }
 
-    // Run active monitor right away
+    // Start running the live monitor terminal loop
     listenToLiveJobs();
+    setInterval(listenToLiveJobs, 5000); // Fail-safe auto-refresh loop every 5 seconds
 </script>
 
 </body>

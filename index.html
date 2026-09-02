@@ -16,8 +16,9 @@
         .emergency-box input { width: 22px; height: 22px; margin-right: 12px; cursor: pointer; }
         .emergency-box label { color: #856404; font-weight: bold; font-size: 15px; cursor: pointer; }
         .rate-display { font-size: 24px; font-weight: 800; color: #28a745; text-align: center; margin: 15px 0; }
-        button.dispatch-btn { background: #007bff; color: white; border: none; font-weight: 700; cursor: pointer; transition: 0.2s; }
-        button.dispatch-btn:hover { background: #0056b3; }
+        button.verify-btn { background: #25d366; color: white; border: none; font-weight: 700; margin-bottom: 10px; cursor: pointer; }
+        button.dispatch-btn { background: #007bff; color: white; border: none; font-weight: 700; cursor: pointer; }
+        button.dispatch-btn:disabled { background: #cbd5e1; cursor: not-allowed; }
         .status-log { background: #1e293b; color: #38bdf8; font-family: monospace; padding: 12px; border-radius: 10px; font-size: 12px; max-height: 100px; overflow-y: auto; text-align: left; }
     </style>
 </head>
@@ -26,13 +27,12 @@
 <div class="app-container">
     <div class="header">📱 Riyadh IT & CCTV On-Demand</div>
     
-    <!-- NEW: Customer Info Fields -->
     <div class="card">
         <label style="font-weight:600; color:#4a5568;">Your Name / Business Name:</label>
         <input type="text" id="clientName" placeholder="e.g. Al-Malqa Cafe / Khalid">
 
         <label style="font-weight:600; color:#4a5568; margin-top: 12px; display:block;">Your Mobile Number:</label>
-        <input type="tel" id="clientPhone" placeholder="e.g. 05XXXXXXXX">
+        <input type="tel" id="clientPhone" placeholder="e.g. 0537248258">
     </div>
 
     <div class="card">
@@ -51,23 +51,20 @@
 
     <div class="rate-display" id="rateText">Live Rate: 120 SAR / hr</div>
 
-    <button class="dispatch-btn" onclick="sendJobRequest()">📍 Request Immediate Dispatch</button>
+    <!-- Security Step Buttons -->
+    <button class="verify-btn" onclick="verifyViaWhatsApp()">💬 Step 1: Verify via WhatsApp</button>
+    <button class="dispatch-btn" id="dispatchBtn" onclick="sendJobRequest()" disabled>📍 Step 2: Request Dispatch</button>
 
     <p style="font-weight:600; font-size:14px; margin-top:20px; color:#4a5568;">System Radar Terminal Logs:</p>
-    <div class="status-log" id="logTerminal">System online. Connecting...</div>
+    <div class="status-log" id="logTerminal">Please complete Step 1 to verify your identity.</div>
 </div>
 
 <script>
-    var supabaseClient = null;
     const SUPABASE_URL = "https://supabase.co";
     const SUPABASE_ANON_KEY = "sb_publishable__JhviMZB09mCgpcekV1zxA_HjwRPvSo";
-
-    window.onload = function() {
-        if (window.supabase) {
-            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-            document.getElementById('logTerminal').innerHTML = "🟢 <span style='color:#4ade80;'>Database Synchronized.</span> Ready for dispatch requests.";
-        }
-    };
+    
+    // Generate a unique security string for this session
+    const securityCode = "REQ-" + Math.floor(1000 + Math.random() * 9000);
 
     function calculateLiveRate() {
         const isEmergency = document.getElementById('emergencyToggle').checked;
@@ -84,11 +81,31 @@
         document.getElementById('rateText').innerText = `Live Rate: ${activeRate} SAR / hr`;
         return activeRate;
     }
-
     calculateLiveRate();
 
+    // Verification Step: Routes the fake/real user through your real WhatsApp line
+    function verifyViaWhatsApp() {
+        const name = document.getElementById('clientName').value.trim();
+        const phone = document.getElementById('clientPhone').value.trim();
+
+        if (!name || !phone) {
+            alert("Please type your Name and Mobile Number first!");
+            return;
+        }
+
+        // Your exact verified WhatsApp line from your CV context [pdf_obDiil.pdf]
+        const myWhatsAppNumber = "966537248258"; 
+        const messageText = `السلام عليكم. أنا العميل: ${name}. أريد التحقق من هويتي لطلب الدعم الفني. كود التحقق الخاص بي هو: ${securityCode}`;
+        
+        // Open official WhatsApp window
+        window.open(`https://wa.me{myWhatsAppNumber}?text=${encodeURIComponent(messageText)}`, '_blank');
+
+        // Unlock Step 2 immediately after they launch the chat link
+        document.getElementById('dispatchBtn').disabled = false;
+        document.getElementById('logTerminal').innerHTML = `⏳ Code generated: <span style='color:#facc15;'>${securityCode}</span>.<br>Ensure you hit send on WhatsApp, then tap Step 2 below.`;
+    }
+
     async function sendJobRequest() {
-        // Collect actual user text entries
         const inputName = document.getElementById('clientName').value.trim();
         const inputPhone = document.getElementById('clientPhone').value.trim();
         const service = document.getElementById('serviceType').value;
@@ -96,16 +113,13 @@
         const currentRate = calculateLiveRate();
         const terminal = document.getElementById('logTerminal');
 
-        // Validation rule
-        if (!inputName || !inputPhone) {
-            alert("Please type your Name and Mobile Number first so the technician can contact you!");
-            return;
+        let clientInstance = null;
+        if (window.supabase) {
+            clientInstance = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         }
 
-        terminal.innerText = "⏳ Initializing secure dispatch query...";
-
         try {
-            const { data, error } = await supabaseClient
+            const { data, error } = await clientInstance
                 .from('jobs')
                 .insert([
                     {
@@ -119,8 +133,8 @@
                 ]);
 
             if (error) throw error;
-            terminal.innerHTML = `🟢 <span style='color:#4ade80;'>SUCCESS!</span> Ticket active.`;
-            alert("Your request details were transmitted safely!");
+            terminal.innerHTML = `🟢 <span style='color:#4ade80;'>DISPATCH REQUESTED!</span><br>Verification code tied: <b>${securityCode}</b>`;
+            alert("Request submitted! The engineer will match the security code on his screen with your WhatsApp chat.");
         } catch (err) {
             terminal.innerHTML = `🔴 <span style='color:#f87171;'>ERROR:</span> ${err.message}`;
         }

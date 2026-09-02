@@ -51,7 +51,7 @@
 
     <div class="rate-display" id="rateText">Live Rate: 120 SAR / hr</div>
 
-    <!-- Secure Dual Authentication Setup -->
+    <!-- Secure Dual Authentication Buttons -->
     <button class="verify-btn" onclick="verifyViaWhatsApp()">💬 Step 1: Verify via WhatsApp</button>
     <button class="dispatch-btn" id="dispatchBtn" onclick="sendJobRequest()" disabled>📍 Step 2: Request Dispatch</button>
 
@@ -63,7 +63,6 @@
     const SUPABASE_URL = "https://supabase.co";
     const SUPABASE_ANON_KEY = "sb_publishable__JhviMZB09mCgpcekV1zxA_HjwRPvSo";
     
-    // Generates static random checking keys
     const securityCode = "REQ-" + Math.floor(1000 + Math.random() * 9000);
 
     function calculateLiveRate() {
@@ -83,7 +82,6 @@
     }
     calculateLiveRate();
 
-    // FIXED: Clean explicit URL linking prevents text-formatting syntax breaks
     function verifyViaWhatsApp() {
         const name = document.getElementById('clientName').value.trim();
         const phone = document.getElementById('clientPhone').value.trim();
@@ -96,10 +94,8 @@
         const messageText = "السلام عليكم. أنا العميل: " + name + ". أريد التحقق من هويتي لطلب الدعم الفني. كود التحقق الخاص بي هو: " + securityCode;
         const finalUrl = "https://wa.me" + encodeURIComponent(messageText);
         
-        window.open(finalUrl, '_blank');
-
-        document.getElementById('dispatchBtn').disabled = false;
-        document.getElementById('logTerminal').innerHTML = "⏳ Code: <span style='color:#facc15; font-weight:bold;'>" + securityCode + "</span>.<br>Send the text on WhatsApp, then tap Step 2 below.";
+        // FIXED: Using direct location shift instead of window.open to bypass phone popup blockers completely
+        window.location.href = finalUrl;
     }
 
     async function sendJobRequest() {

@@ -22,13 +22,17 @@
         .mode-btn { padding: 6px 12px; font-size: 12px; font-weight: bold; border-radius: 20px; border: 1px solid #ccd4d9; background: #e2e8f0; cursor: pointer; margin: 0 5px; }
         .mode-btn.active { background: #007bff; color: white; border-color: #007bff; }
         .card { background: #f7f9fa; border-radius: 12px; padding: 15px; margin-bottom: 15px; border: 1px solid #eef1f2; color: inherit; }
-        select, input, button, .verify-link-btn { width: 100%; padding: 14px; margin-top: 8px; border-radius: 10px; border: 1px solid #ccd4d9; font-size: 16px; box-sizing: border-box; display: block; text-align: center; text-decoration: none; }
+        select, input, button { width: 100%; padding: 14px; margin-top: 8px; border-radius: 10px; border: 1px solid #ccd4d9; font-size: 16px; box-sizing: border-box; display: block; text-align: center; }
         select, input { background: white; font-weight: 500; color: #1a1a1a; }
         .emergency-box { background: #fff3cd; border: 1px solid #ffeeba; border-radius: 12px; padding: 12px; display: flex; align-items: center; margin: 15px 0; color: #856404; }
         .emergency-box input { width: 22px; height: 22px; margin-right: 12px; cursor: pointer; }
         .emergency-box label { font-weight: bold; font-size: 15px; cursor: pointer; color: inherit; }
         .rate-display { font-size: 24px; font-weight: 800; color: #28a745; text-align: center; margin: 15px 0; }
-        .verify-link-btn { background: #25d366; color: white; border: none; font-weight: 700; margin-bottom: 10px; cursor: pointer; }
+        
+        /* Verification box styling */
+        .pin-box { background: #e2e8f0; border-radius: 10px; padding: 12px; font-size: 20px; font-weight: bold; letter-spacing: 4px; color: #0f172a; margin: 10px 0; text-align: center; }
+        button.verify-btn { background: #10b981; color: white; border: none; font-weight: 700; margin-bottom: 10px; cursor: pointer; }
+        
         button.dispatch-btn { background: #007bff; color: white; border: none; font-weight: 700; cursor: pointer; }
         button.dispatch-btn:disabled { background: #cbd5e1; cursor: not-allowed; color: #64748b; }
         .status-log { background: #1e293b; color: #38bdf8; font-family: monospace; padding: 12px; border-radius: 10px; font-size: 12px; max-height: 100px; overflow-y: auto; text-align: left; }
@@ -41,11 +45,9 @@
         .emergency-badge { position: absolute; top: 15px; right: 15px; background: #ef4444; color: white; padding: 4px 8px; font-size: 11px; font-weight: bold; border-radius: 6px; }
         .job-title { font-size: 16px; font-weight: bold; margin-bottom: 8px; border-bottom: 1px dashed #334155; padding-bottom: 5px; }
         .job-detail { font-size: 14px; color: #94a3b8; margin: 5px 0; }
-        .code-vault { background: #334155; color: #facc15; padding: 4px 8px; border-radius: 6px; display: inline-block; font-weight: bold; font-family: monospace; }
         button.accept-btn { width: 100%; padding: 12px; background: #10b981; color: white; border: none; font-weight: bold; border-radius: 8px; margin-top: 12px; cursor: pointer; }
         .empty-state { text-align: center; color: #64748b; padding: 40px 0; font-size: 14px; }
     </style>
-</div class="app-container">
 </head>
 <body class="light-mode">
 
@@ -79,12 +81,17 @@
         </div>
         <div class="rate-display" id="rateText">Live Rate: 120 SAR / hr</div>
         
-        <!-- FIXED: Native Anchor Link with target="_blank" guarantees no popup blockage and keeps tab context active -->
-        <a id="whatsappSecureLink" class="verify-link-btn" href="#" target="_blank" onclick="return executeWhatsAppAuth()">💬 Step 1: Verify via WhatsApp</a>
+        <!-- NEW Security PIN Gate Section -->
+        <div class="card" style="background: #f1f5f9;">
+            <label style="font-weight:700; color:#0f172a; text-align:center; display:block;">🔒 Security Verification Gate</label>
+            <div class="pin-box" id="generatedPinDisplay">----</div>
+            <input type="number" id="userPinInput" placeholder="Enter the 4-digit code shown above">
+            <button class="verify-btn" onclick="validateSecurityPin()">Verify Security Code</button>
+        </div>
         
-        <button class="dispatch-btn" id="dispatchBtn" onclick="sendJobRequest()" disabled>📍 Step 2: Request Dispatch</button>
+        <button class="dispatch-btn" id="dispatchBtn" onclick="sendJobRequest()" disabled>📍 Request Dispatch</button>
         <p style="font-weight:600; font-size:14px; margin-top:20px; color:#4a5568;">System Radar Terminal Logs:</p>
-        <div class="status-log" id="logTerminal">Please complete Step 1 to verify your identity.</div>
+        <div class="status-log" id="logTerminal">Please complete security verification to unlock booking.</div>
     </div>
 
     <!-- 🛠️ TECHNICIAN RADAR CONTAINER -->
@@ -99,9 +106,10 @@
 <script>
     var supabaseClient = null;
     var realtimeChannel = null;
+    var correctPin = "";
+    
     const SUPABASE_URL = "https://supabase.co";
     const SUPABASE_ANON_KEY = "sb_publishable__JhviMZB09mCgpcekV1zxA_HjwRPvSo";
-    const securityCode = "REQ-" + Math.floor(1000 + Math.random() * 9000);
 
     function checkDatabaseConnection() {
         if (window.supabase && !supabaseClient) {
@@ -110,8 +118,15 @@
         return supabaseClient;
     }
 
+    // Generate random 4 digit string
+    function generateNewSecurityPin() {
+        correctPin = Math.floor(1000 + Math.random() * 9000).toString();
+        document.getElementById('generatedPinDisplay').innerText = correctPin;
+    }
+
     window.onload = function() {
         checkDatabaseConnection();
+        generateNewSecurityPin();
         document.body.className = "light-mode";
         if(window.location.hash === '#tech') {
             switchView('tech');
@@ -152,16 +167,8 @@
         document.getElementById('rateText').innerText = `Live Rate: ${activeRate} SAR / hr`;
         return activeRate;
     }
-    calculateLiveRate();
 
-    // FIXED: Native interception loop maps clean parameters safely in a new execution bubble
-    function executeWhatsAppAuth() {
+    // Validates the matching 4 digit entry to prevent disturbances
+    function validateSecurityPin() {
         const name = document.getElementById('clientName').value.trim();
         const phone = document.getElementById('clientPhone').value.trim();
-        if (!name || !phone) {
-            alert("Please type your Name and Mobile Number first!");
-            return false; // Blocks navigation if fields are empty
-        }
-        const messageText = "السلام عليكم. أنا العميل: " + name + ". أريد التحقق من هويتي لطلب الدعم الفني. كود التحقق الخاص بي هو: " + securityCode;
-        
-        // Dynamic construction using stable core API routing patterns

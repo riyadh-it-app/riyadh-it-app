@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IT Technician Radar - Riyadh</title>
+    <!-- Loading the real-time database library -->
+    <script src="https://jsdelivr.net"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 15px; }
+        .tech-container { max-width: 480px; margin: 0 auto; }
+        .header { text-align: center; font-size: 20px; font-weight: bold; color: #38bdf8; padding: 15px 0; border-bottom: 1px solid #334155; }
+        .job-card { background: #1e293b; border-radius: 12px; padding: 15px; margin-top: 15px; border: 1px solid #334155; position: relative; }
+        .emergency-badge { position: absolute; top: 15px; right: 15px; background: #ef4444; color: white; padding: 4px 8px; font-size: 11px; font-weight: bold; border-radius: 6px; }
+        .job-title { font-size: 16px; font-weight: bold; color: #f1f5f9; margin-bottom: 5px; }
+        .job-detail { font-size: 14px; color: #94a3b8; margin: 3px 0; }
+        .rate-badge { color: #4ade80; font-weight: bold; font-size: 18px; margin-top: 10px; }
+        button.accept-btn { width: 100%; padding: 12px; background: #10b981; color: white; border: none; font-weight: bold; border-radius: 8px; margin-top: 12px; cursor: pointer; }
+        button.accept-btn:hover { background: #059669; }
+        .empty-state { text-align: center; color: #64748b; padding: 40px 0; font-size: 14px; }
+    </style>
+</head>
+<body>
+
+<div class="tech-container">
+    <div class="header">🛠️ Live Jobs Radar Terminal</div>
+    <div id="radarFeed">
+        <div class="empty-state">🔄 Monitoring Riyadh for active incoming client signals...</div>
+    </div>
+</div>
+
+<script>
+    // 1. Connection settings to your secure Mumbai database
+    const SUPABASE_URL = "https://supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable__JhviMZB09mCgpcekV1zxA_HjwRPvSo";
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // 2. Fetch and render live pending tickets
+    async function listenToLiveJobs() {
+        // Fetch current active jobs
+        const { data: activeJobs } = await supabaseClient
+            .from('jobs')
+            .select('*')
+            .eq('job_status', 'PENDING')
+            .order('created_at', { ascending: false });
+
+        renderJobs(activeJobs);
+
+        // Turn on the live background listener to catch immediate client clicks
+        supabaseClient
+            .channel('schema-db-changes')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'jobs' }, payload => {
+                listenToLiveJobs(); // Refresh dashboard on any updates
+            })
+            .subscribe();
+    }
+
+    function renderJobs(jobsList) {
+        const feed = document.getElementById('radarFeed');
+        if (!jobsList || jobsList.length === 0) {
+            feed.innerHTML = '<div class="empty-state">🔄 Monitoring Riyadh for active incoming client signals...</div>';
+            return;
+        }
+
+        feed.innerHTML = ''; // Clear screening text
+        jobsList.forEach(job => {
+            const card = document.createElement('div');
+            card.className = 'job-card';
+            
+            let emergencyTag = job.is_emergency ? '<span class="emergency-badge">🚨 EMERGENCY</span>' : '';
+            
+            card.innerHTML = `
+                ${emergencyTag}
+                <div class="job-title">${job.service_type.replace('_', ' ')}</div>
+                <div class="job-detail">👤 Client: ${job.client_name}</div>
+                <div class="job-detail">📞 Contact: ${job.client_phone}</div>
+                <div class="rate-badge">${job.hourly_rate} SAR / hour</div>
+                <button class="accept-btn" onclick="acceptJobTicket(${job.job_id})">⚡ Accept Job Dispatch</button>
+            `;
+            feed.appendChild(card);
+        });
+    }
+
+    // 3. Mark the job ticket as accepted when you head out in your car
+    async function acceptJobTicket(id) {
+        const { error } = await supabaseClient
+            .from('jobs')
+            .update({ job_status: 'ACCEPTED' })
+            .eq('job_id', id);
+
+        if (!error) {
+            alert("🚀 Job accepted! Route mapped. Proceed to client location immediately.");
+            listenToLiveJobs();
+        } else {
+            alert("Error claiming job: " + error.message);
+        }
+    }
+
+    // Run active monitor right away
+    listenToLiveJobs();
+</script>
+
+</body>
+</html>

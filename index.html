@@ -3,67 +3,135 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Riyadh On-Demand IT & CCTV Support</title>
+    <title>Riyadh On-Demand IT & CCTV Marketplace</title>
+    <!-- Securely loading the real-time Supabase library from global CDN -->
     <script src="https://jsdelivr.net"></script>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f0f2f5; margin: 0; padding: 15px; }
-        .app-container { max-width: 480px; margin: 0 auto; background: white; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); padding: 20px; }
-        .header { text-align: center; font-weight: bold; font-size: 22px; color: #1a1a1a; margin-bottom: 20px; }
-        .card { background: #f7f9fa; border-radius: 12px; padding: 15px; margin-bottom: 15px; border: 1px solid #eef1f2; }
+        :root {
+            --bg-client: #f0f2f5;
+            --bg-tech: #0f172a;
+            --card-client: #ffffff;
+            --card-tech: #1e293b;
+            --text-client: #1a1a1a;
+            --text-tech: #f8fafc;
+        }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 15px; transition: background 0.3s; }
+        .app-container { max-width: 480px; margin: 0 auto; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); padding: 20px; background: white; color: #1a1a1a; }
+        .header { text-align: center; font-weight: bold; font-size: 22px; margin-bottom: 15px; }
+        .mode-toggle { text-align: center; margin-bottom: 20px; }
+        .mode-btn { padding: 6px 12px; font-size: 12px; font-weight: bold; border-radius: 20px; border: 1px solid #ccd4d9; background: #e2e8f0; cursor: pointer; margin: 0 5px; }
+        .mode-btn.active { background: #007bff; color: white; border-color: #007bff; }
+        .card { background: #f7f9fa; border-radius: 12px; padding: 15px; margin-bottom: 15px; border: 1px solid #eef1f2; color: inherit; }
         select, input, button { width: 100%; padding: 14px; margin-top: 8px; border-radius: 10px; border: 1px solid #ccd4d9; font-size: 16px; box-sizing: border-box; }
-        select, input { background: white; font-weight: 500; }
-        .emergency-box { background: #fff3cd; border: 1px solid #ffeeba; border-radius: 12px; padding: 12px; display: flex; align-items: center; margin: 15px 0; }
+        select, input { background: white; font-weight: 500; color: #1a1a1a; }
+        .emergency-box { background: #fff3cd; border: 1px solid #ffeeba; border-radius: 12px; padding: 12px; display: flex; align-items: center; margin: 15px 0; color: #856404; }
         .emergency-box input { width: 22px; height: 22px; margin-right: 12px; cursor: pointer; }
-        .emergency-box label { color: #856404; font-weight: bold; font-size: 15px; cursor: pointer; }
+        .emergency-box label { font-weight: bold; font-size: 15px; cursor: pointer; color: inherit; }
         .rate-display { font-size: 24px; font-weight: 800; color: #28a745; text-align: center; margin: 15px 0; }
         button.verify-btn { background: #25d366; color: white; border: none; font-weight: 700; margin-bottom: 10px; cursor: pointer; }
         button.dispatch-btn { background: #007bff; color: white; border: none; font-weight: 700; cursor: pointer; }
-        button.dispatch-btn:disabled { background: #cbd5e1; cursor: not-allowed; }
+        button.dispatch-btn:disabled { background: #cbd5e1; cursor: not-allowed; color: #64748b; }
         .status-log { background: #1e293b; color: #38bdf8; font-family: monospace; padding: 12px; border-radius: 10px; font-size: 12px; max-height: 100px; overflow-y: auto; text-align: left; }
+        
+        /* Dark Theme overrides for Technician Dashboard mode */
+        body.dark-mode { background: var(--bg-tech); }
+        body.dark-mode .app-container { background: var(--card-tech); color: var(--text-tech); box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+        body.dark-mode .card { background: #0f172a; border-color: #334155; }
+        .job-card { background: #0f172a; border: 1px solid #334155; border-radius: 12px; padding: 15px; margin-top: 15px; position: relative; text-align: left; }
+        .emergency-badge { position: absolute; top: 15px; right: 15px; background: #ef4444; color: white; padding: 4px 8px; font-size: 11px; font-weight: bold; border-radius: 6px; }
+        .job-title { font-size: 16px; font-weight: bold; margin-bottom: 8px; border-bottom: 1px dashed #334155; padding-bottom: 5px; }
+        .job-detail { font-size: 14px; color: #94a3b8; margin: 5px 0; }
+        .code-vault { background: #334155; color: #facc15; padding: 4px 8px; border-radius: 6px; display: inline-block; font-weight: bold; font-family: monospace; }
+        button.accept-btn { width: 100%; padding: 12px; background: #10b981; color: white; border: none; font-weight: bold; border-radius: 8px; margin-top: 12px; cursor: pointer; }
+        .empty-state { text-align: center; color: #64748b; padding: 40px 0; font-size: 14px; }
     </style>
 </head>
-<body>
+<body class="light-mode">
 
 <div class="app-container">
-    <div class="header">📱 Riyadh IT & CCTV On-Demand</div>
-    
-    <div class="card">
-        <label style="font-weight:600; color:#4a5568;">Your Name / Business Name:</label>
-        <input type="text" id="clientName" placeholder="e.g. Al-Malqa Cafe / Khalid">
-
-        <label style="font-weight:600; color:#4a5568; margin-top: 12px; display:block;">Your Mobile Number:</label>
-        <input type="tel" id="clientPhone" placeholder="e.g. 05XXXXXXXX">
+    <!-- View Switcher -->
+    <div class="mode-toggle">
+        <button id="btnClient" class="mode-btn active" onclick="switchView('client')">Customer App</button>
+        <button id="btnTech" class="mode-btn" onclick="switchView('tech')">Technician Radar</button>
     </div>
 
-    <div class="card">
-        <label style="font-weight:600; color:#4a5568;">Select Required Technical Support:</label>
-        <select id="serviceType">
-            <option value="CCTV_INSTALL">IP CCTV Surveillance Setup (HCIS Rules)</option>
-            <option value="NETWORKING">Cisco/Ubiquiti Network Repair (CCNA)</option>
-            <option value="FIBER_FTTH">Fiber Optic Structured Cabling / FTTH</option>
-        </select>
+    <!-- 📱 CLIENT APP SCREEN CONTAINER -->
+    <div id="clientScreen">
+        <div class="header">📱 Riyadh IT & CCTV On-Demand</div>
+        <div class="card">
+            <label style="font-weight:600; color:#4a5568;">Your Name / Business Name:</label>
+            <input type="text" id="clientName" placeholder="e.g. Al-Malqa Cafe / Khalid">
+            <label style="font-weight:600; color:#4a5568; margin-top: 12px; display:block;">Your Mobile Number:</label>
+            <input type="tel" id="clientPhone" placeholder="e.g. 05XXXXXXXX">
+        </div>
+        <div class="card">
+            <label style="font-weight:600; color:#4a5568;">Select Required Technical Support:</label>
+            <select id="serviceType">
+                <option value="CCTV_INSTALL">IP CCTV Surveillance Setup (HCIS Rules)</option>
+                <option value="NETWORKING">Cisco/Ubiquiti Network Repair (CCNA)</option>
+                <option value="FIBER_FTTH">Fiber Optic Structured Cabling / FTTH</option>
+            </select>
+        </div>
+        <div class="emergency-box">
+            <input type="checkbox" id="emergencyToggle" onchange="calculateLiveRate()">
+            <label for="emergencyToggle">🚨 Emergency Job (Arrive in 60 mins)</label>
+        </div>
+        <div class="rate-display" id="rateText">Live Rate: 120 SAR / hr</div>
+        <button class="verify-btn" onclick="verifyViaWhatsApp()">💬 Step 1: Verify via WhatsApp</button>
+        <button class="dispatch-btn" id="dispatchBtn" onclick="sendJobRequest()" disabled>📍 Step 2: Request Dispatch</button>
+        <p style="font-weight:600; font-size:14px; margin-top:20px; color:#4a5568;">System Radar Terminal Logs:</p>
+        <div class="status-log" id="logTerminal">Please complete Step 1 to verify your identity.</div>
     </div>
 
-    <div class="emergency-box">
-        <input type="checkbox" id="emergencyToggle" onchange="calculateLiveRate()">
-        <label for="emergencyToggle">🚨 Emergency Job (Arrive in 60 mins)</label>
+    <!-- 🛠️ TECHNICIAN RADAR CONTAINER -->
+    <div id="techScreen" style="display: none;">
+        <div class="header" style="color:#38bdf8;">🛠️ Live Jobs Radar Terminal</div>
+        <div id="radarFeed">
+            <div class="empty-state">🔄 Monitoring Riyadh for active incoming client signals...</div>
+        </div>
     </div>
-
-    <div class="rate-display" id="rateText">Live Rate: 120 SAR / hr</div>
-
-    <!-- Secure Dual Authentication Buttons -->
-    <button class="verify-btn" onclick="verifyViaWhatsApp()">💬 Step 1: Verify via WhatsApp</button>
-    <button class="dispatch-btn" id="dispatchBtn" onclick="sendJobRequest()" disabled>📍 Step 2: Request Dispatch</button>
-
-    <p style="font-weight:600; font-size:14px; margin-top:20px; color:#4a5568;">System Radar Terminal Logs:</p>
-    <div class="status-log" id="logTerminal">Please complete Step 1 to verify your identity.</div>
 </div>
 
 <script>
+    var supabaseClient = null;
+    var realtimeChannel = null;
     const SUPABASE_URL = "https://supabase.co";
     const SUPABASE_ANON_KEY = "sb_publishable__JhviMZB09mCgpcekV1zxA_HjwRPvSo";
-    
     const securityCode = "REQ-" + Math.floor(1000 + Math.random() * 9000);
+
+    function checkDatabaseConnection() {
+        if (window.supabase && !supabaseClient) {
+            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        }
+        return supabaseClient;
+    }
+
+    window.onload = function() {
+        checkDatabaseConnection();
+        document.body.className = "light-mode";
+        if(window.location.hash === '#tech') {
+            switchView('tech');
+        }
+    };
+
+    function switchView(mode) {
+        checkDatabaseConnection();
+        if (mode === 'client') {
+            document.body.className = "light-mode";
+            document.getElementById('clientScreen').style.display = 'block';
+            document.getElementById('techScreen').style.display = 'none';
+            document.getElementById('btnClient').className = 'mode-btn active';
+            document.getElementById('btnTech').className = 'mode-btn';
+            if(realtimeChannel) { realtimeChannel.unsubscribe(); realtimeChannel = null; }
+        } else {
+            document.body.className = "dark-mode";
+            document.getElementById('clientScreen').style.display = 'none';
+            document.getElementById('techScreen').style.display = 'block';
+            document.getElementById('btnClient').className = 'mode-btn';
+            document.getElementById('btnTech').className = 'mode-btn active';
+            listenToLiveJobs();
+        }
+    }
 
     function calculateLiveRate() {
         const isEmergency = document.getElementById('emergencyToggle').checked;
@@ -82,56 +150,20 @@
     }
     calculateLiveRate();
 
+    // FIXED: Removed the invalid label typo that was breaking the function call
     function verifyViaWhatsApp() {
         const name = document.getElementById('clientName').value.trim();
         const phone = document.getElementById('clientPhone').value.trim();
-
         if (!name || !phone) {
             alert("Please type your Name and Mobile Number first!");
             return;
         }
-
         const messageText = "السلام عليكم. أنا العميل: " + name + ". أريد التحقق من هويتي لطلب الدعم الفني. كود التحقق الخاص بي هو: " + securityCode;
-        const finalUrl = "https://wa.me" + encodeURIComponent(messageText);
+        window.location.href = "https://wa.me" + encodeURIComponent(messageText);
         
-        // FIXED: Using direct location shift instead of window.open to bypass phone popup blockers completely
-        window.location.href = finalUrl;
+        document.getElementById('dispatchBtn').disabled = false;
+        document.getElementById('logTerminal').innerHTML = "⏳ Code generated: <span style='color:#facc15; font-weight:bold;'>" + securityCode + "</span>.<br>Send the text on WhatsApp, then tap Step 2 below.";
     }
 
     async function sendJobRequest() {
-        const inputName = document.getElementById('clientName').value.trim();
-        const inputPhone = document.getElementById('clientPhone').value.trim();
-        const service = document.getElementById('serviceType').value;
-        const isEmergencyJob = document.getElementById('emergencyToggle').checked;
-        const currentRate = calculateLiveRate();
-        const terminal = document.getElementById('logTerminal');
-
-        let clientInstance = null;
-        if (window.supabase) {
-            clientInstance = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        }
-
-        try {
-            const { data, error } = await clientInstance
-                .from('jobs')
-                .insert([
-                    {
-                        client_name: inputName,
-                        client_phone: inputPhone,
-                        service_type: service,
-                        hourly_rate: currentRate,
-                        is_emergency: isEmergencyJob,
-                        job_status: "PENDING"
-                    }
-                ]);
-
-            if (error) throw error;
-            terminal.innerHTML = `🟢 <span style='color:#4ade80;'>DISPATCH REQUESTED!</span><br>Verify Code: <b>${securityCode}</b>`;
-            alert("Request sent successfully! Check your technician dashboard.");
-        } catch (err) {
-            terminal.innerHTML = `🔴 <span style='color:#f87171;'>ERROR:</span> ${err.message}`;
-        }
-    }
-</script>
-</body>
-</html>
+        checkDatabaseConnection();

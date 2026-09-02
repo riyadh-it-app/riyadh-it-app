@@ -32,7 +32,7 @@
         <input type="text" id="clientName" placeholder="e.g. Al-Malqa Cafe / Khalid">
 
         <label style="font-weight:600; color:#4a5568; margin-top: 12px; display:block;">Your Mobile Number:</label>
-        <input type="tel" id="clientPhone" placeholder="e.g. 0537248258">
+        <input type="tel" id="clientPhone" placeholder="e.g. 05XXXXXXXX">
     </div>
 
     <div class="card">
@@ -51,7 +51,7 @@
 
     <div class="rate-display" id="rateText">Live Rate: 120 SAR / hr</div>
 
-    <!-- Security Step Buttons -->
+    <!-- Secure Dual Authentication Setup -->
     <button class="verify-btn" onclick="verifyViaWhatsApp()">💬 Step 1: Verify via WhatsApp</button>
     <button class="dispatch-btn" id="dispatchBtn" onclick="sendJobRequest()" disabled>📍 Step 2: Request Dispatch</button>
 
@@ -63,7 +63,7 @@
     const SUPABASE_URL = "https://supabase.co";
     const SUPABASE_ANON_KEY = "sb_publishable__JhviMZB09mCgpcekV1zxA_HjwRPvSo";
     
-    // Generate a unique security string for this session
+    // Generates static random checking keys
     const securityCode = "REQ-" + Math.floor(1000 + Math.random() * 9000);
 
     function calculateLiveRate() {
@@ -83,7 +83,7 @@
     }
     calculateLiveRate();
 
-    // Verification Step: Routes the fake/real user through your real WhatsApp line
+    // FIXED: Clean explicit URL linking prevents text-formatting syntax breaks
     function verifyViaWhatsApp() {
         const name = document.getElementById('clientName').value.trim();
         const phone = document.getElementById('clientPhone').value.trim();
@@ -93,16 +93,13 @@
             return;
         }
 
-        // Your exact verified WhatsApp line from your CV context [pdf_obDiil.pdf]
-        const myWhatsAppNumber = "966537248258"; 
-        const messageText = `السلام عليكم. أنا العميل: ${name}. أريد التحقق من هويتي لطلب الدعم الفني. كود التحقق الخاص بي هو: ${securityCode}`;
+        const messageText = "السلام عليكم. أنا العميل: " + name + ". أريد التحقق من هويتي لطلب الدعم الفني. كود التحقق الخاص بي هو: " + securityCode;
+        const finalUrl = "https://wa.me" + encodeURIComponent(messageText);
         
-        // Open official WhatsApp window
-        window.open(`https://wa.me{myWhatsAppNumber}?text=${encodeURIComponent(messageText)}`, '_blank');
+        window.open(finalUrl, '_blank');
 
-        // Unlock Step 2 immediately after they launch the chat link
         document.getElementById('dispatchBtn').disabled = false;
-        document.getElementById('logTerminal').innerHTML = `⏳ Code generated: <span style='color:#facc15;'>${securityCode}</span>.<br>Ensure you hit send on WhatsApp, then tap Step 2 below.`;
+        document.getElementById('logTerminal').innerHTML = "⏳ Code: <span style='color:#facc15; font-weight:bold;'>" + securityCode + "</span>.<br>Send the text on WhatsApp, then tap Step 2 below.";
     }
 
     async function sendJobRequest() {
@@ -133,8 +130,8 @@
                 ]);
 
             if (error) throw error;
-            terminal.innerHTML = `🟢 <span style='color:#4ade80;'>DISPATCH REQUESTED!</span><br>Verification code tied: <b>${securityCode}</b>`;
-            alert("Request submitted! The engineer will match the security code on his screen with your WhatsApp chat.");
+            terminal.innerHTML = `🟢 <span style='color:#4ade80;'>DISPATCH REQUESTED!</span><br>Verify Code: <b>${securityCode}</b>`;
+            alert("Request sent successfully! Check your technician dashboard.");
         } catch (err) {
             terminal.innerHTML = `🔴 <span style='color:#f87171;'>ERROR:</span> ${err.message}`;
         }

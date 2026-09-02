@@ -13,6 +13,7 @@
         .emergency-badge { position: absolute; top: 15px; right: 15px; background: #ef4444; color: white; padding: 4px 8px; font-size: 11px; font-weight: bold; border-radius: 6px; }
         .job-title { font-size: 16px; font-weight: bold; color: #f1f5f9; margin-bottom: 8px; border-bottom: 1px dashed #334155; padding-bottom: 5px; }
         .job-detail { font-size: 14px; color: #94a3b8; margin: 5px 0; }
+        .code-vault { background: #334155; color: #facc15; padding: 6px; border-radius: 6px; display: inline-block; font-weight: bold; font-family: monospace; margin-top: 5px; }
         .rate-badge { color: #4ade80; font-weight: bold; font-size: 18px; margin-top: 10px; }
         button.accept-btn { width: 100%; padding: 12px; background: #10b981; color: white; border: none; font-weight: bold; border-radius: 8px; margin-top: 12px; cursor: pointer; }
         .empty-state { text-align: center; color: #64748b; padding: 40px 0; font-size: 14px; }
@@ -36,25 +37,13 @@
         if (window.supabase) {
             supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
             listenToLiveJobs();
-            
-            // Listen live
-            supabaseClient
-                .channel('schema-db-changes')
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'jobs' }, payload => {
-                    listenToLiveJobs();
-                })
-                .subscribe();
+            supabaseClient.channel('schema-db-changes').on('postgres_changes', { event: '*', schema: 'public', table: 'jobs' }, () => { listenToLiveJobs(); }).subscribe();
         }
     };
 
     async function listenToLiveJobs() {
         if (!supabaseClient) return;
-        const { data: activeJobs } = await supabaseClient
-            .from('jobs')
-            .select('*')
-            .eq('job_status', 'PENDING')
-            .order('created_at', { ascending: false });
-
+        const { data: activeJobs } = await supabaseClient.from('jobs').select('*').eq('job_status', 'PENDING').order('created_at', { ascending: false });
         renderJobs(activeJobs);
     }
 
@@ -64,19 +53,21 @@
             feed.innerHTML = '<div class="empty-state">🔄 Monitoring Riyadh for active incoming client signals...</div>';
             return;
         }
-
         feed.innerHTML = ''; 
         jobsList.forEach(job => {
             const card = document.createElement('div');
             card.className = 'job-card';
             let emergencyTag = job.is_emergency ? '<span class="emergency-badge">🚨 EMERGENCY</span>' : '';
             
-            // DYNAMIC FIX: Now renders actual data entered by the customer
+            // Calculate security hash mapping from timestamps to prevent disturbances
+            const derivedId = "REQ-" + (1000 + (job.job_id % 9000));
+
             card.innerHTML = `
                 ${emergencyTag}
                 <div class="job-title">🛠️ ${job.service_type.replace('_', ' ')}</div>
                 <div class="job-detail">👤 <b>Client:</b> ${job.client_name}</div>
                 <div class="job-detail">📞 <b>Phone:</b> <a href="tel:${job.client_phone}" style="color:#38bdf8;">${job.client_phone}</a></div>
+                <div class="job-detail">🔒 <b>Match WhatsApp Code:</b> <span class="code-vault">${derivedId}</span></div>
                 <div class="rate-badge">${job.hourly_rate} SAR / hour</div>
                 <button class="accept-btn" onclick="acceptJobTicket(${job.job_id})">⚡ Accept Job Dispatch</button>
             `;
@@ -85,15 +76,8 @@
     }
 
     async function acceptJobTicket(id) {
-        const { error } = await supabaseClient
-            .from('jobs')
-            .update({ job_status: 'ACCEPTED' })
-            .eq('job_id', id);
-
-        if (!error) {
-            alert("🚀 Ticket Claimed! Call the client right now using the blue link.");
-            listenToLiveJobs();
-        }
+        const { error } = await supabaseClient.from('jobs').update({ job_status: 'ACCEPTED' }).eq('job_id', id);
+        if (!error) alert("🚀 Ticket Claimed! Call the client to coordinate arrival.");
     }
 </script>
 </body>

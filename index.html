@@ -28,11 +28,7 @@
         .emergency-box input { width: 22px; height: 22px; margin-right: 12px; cursor: pointer; }
         .emergency-box label { font-weight: bold; font-size: 15px; cursor: pointer; color: inherit; }
         .rate-display { font-size: 24px; font-weight: 800; color: #28a745; text-align: center; margin: 15px 0; }
-        
-        /* Verification box styling */
-        .pin-box { background: #e2e8f0; border-radius: 10px; padding: 12px; font-size: 20px; font-weight: bold; letter-spacing: 4px; color: #0f172a; margin: 10px 0; text-align: center; }
         button.verify-btn { background: #10b981; color: white; border: none; font-weight: 700; margin-bottom: 10px; cursor: pointer; }
-        
         button.dispatch-btn { background: #007bff; color: white; border: none; font-weight: 700; cursor: pointer; }
         button.dispatch-btn:disabled { background: #cbd5e1; cursor: not-allowed; color: #64748b; }
         .status-log { background: #1e293b; color: #38bdf8; font-family: monospace; padding: 12px; border-radius: 10px; font-size: 12px; max-height: 100px; overflow-y: auto; text-align: left; }
@@ -64,9 +60,14 @@
         <div class="card">
             <label style="font-weight:600; color:#4a5568;">Your Name / Business Name:</label>
             <input type="text" id="clientName" placeholder="e.g. Al-Malqa Cafe / Khalid">
+            
             <label style="font-weight:600; color:#4a5568; margin-top: 12px; display:block;">Your Mobile Number:</label>
             <input type="tel" id="clientPhone" placeholder="e.g. 05XXXXXXXX">
+
+            <label style="font-weight:600; color:#4a5568; margin-top: 12px; display:block;">Your Email Address:</label>
+            <input type="email" id="clientEmail" placeholder="name@business.com">
         </div>
+        
         <div class="card">
             <label style="font-weight:600; color:#4a5568;">Select Required Technical Support:</label>
             <select id="serviceType">
@@ -75,23 +76,24 @@
                 <option value="FIBER_FTTH">Fiber Optic Structured Cabling / FTTH</option>
             </select>
         </div>
+        
         <div class="emergency-box">
             <input type="checkbox" id="emergencyToggle" onchange="calculateLiveRate()">
             <label for="emergencyToggle">🚨 Emergency Job (Arrive in 60 mins)</label>
         </div>
         <div class="rate-display" id="rateText">Live Rate: 120 SAR / hr</div>
         
-        <!-- NEW Security PIN Gate Section -->
-        <div class="card" style="background: #f1f5f9;">
-            <label style="font-weight:700; color:#0f172a; text-align:center; display:block;">🔒 Security Verification Gate</label>
-            <div class="pin-box" id="generatedPinDisplay">----</div>
-            <input type="number" id="userPinInput" placeholder="Enter the 4-digit code shown above">
-            <button class="verify-btn" onclick="validateSecurityPin()">Verify Security Code</button>
+        <!-- Free Email verification fields -->
+        <button class="verify-btn" id="emailSendBtn" onclick="sendVerificationEmail()">📧 Step 1: Send Verification Code</button>
+        
+        <div id="pinVerificationSection" style="display:none; margin-top: 10px;">
+            <input type="number" id="userPinInput" placeholder="Enter 4-digit code from your email">
+            <button class="verify-btn" style="background:#059669;" onclick="validateEmailPin()">Verify Code</button>
         </div>
         
         <button class="dispatch-btn" id="dispatchBtn" onclick="sendJobRequest()" disabled>📍 Request Dispatch</button>
         <p style="font-weight:600; font-size:14px; margin-top:20px; color:#4a5568;">System Radar Terminal Logs:</p>
-        <div class="status-log" id="logTerminal">Please complete security verification to unlock booking.</div>
+        <div class="status-log" id="logTerminal">Please verify your email address to book a tech.</div>
     </div>
 
     <!-- 🛠️ TECHNICIAN RADAR CONTAINER -->
@@ -106,8 +108,11 @@
 <script>
     var supabaseClient = null;
     var realtimeChannel = null;
-    var correctPin = "";
+    var generatedPin = "";
     
+    // ⚠️ CONFIGURATION: Replace this string with your real cPanel domain url path
+    const CPANEL_PROXY_URL = "https://anamnet.com";
+
     const SUPABASE_URL = "https://supabase.co";
     const SUPABASE_ANON_KEY = "sb_publishable__JhviMZB09mCgpcekV1zxA_HjwRPvSo";
 
@@ -118,16 +123,9 @@
         return supabaseClient;
     }
 
-    // Generate random 4 digit string
-    function generateNewSecurityPin() {
-        correctPin = Math.floor(1000 + Math.random() * 9000).toString();
-        document.getElementById('generatedPinDisplay').innerText = correctPin;
-    }
-
     window.onload = function() {
         checkDatabaseConnection();
-        generateNewSecurityPin();
-        document.body.className = "light-mode";
+        generatedPin = Math.floor(1000 + Math.random() * 9000).toString();
         if(window.location.hash === '#tech') {
             switchView('tech');
         }
@@ -168,7 +166,10 @@
         return activeRate;
     }
 
-    // Validates the matching 4 digit entry to prevent disturbances
-    function validateSecurityPin() {
+    // Sends the request payload securely through your cPanel script routing
+    async function sendVerificationEmail() {
+        const email = document.getElementById('clientEmail').value.trim();
         const name = document.getElementById('clientName').value.trim();
         const phone = document.getElementById('clientPhone').value.trim();
+        const terminal = document.getElementById('logTerminal');
+

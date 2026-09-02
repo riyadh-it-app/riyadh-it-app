@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>IT Technician Radar - Riyadh</title>
-    <!-- Securely loading the real-time database library -->
     <script src="https://jsdelivr.net"></script>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 15px; }
@@ -12,11 +11,10 @@
         .header { text-align: center; font-size: 20px; font-weight: bold; color: #38bdf8; padding: 15px 0; border-bottom: 1px solid #334155; }
         .job-card { background: #1e293b; border-radius: 12px; padding: 15px; margin-top: 15px; border: 1px solid #334155; position: relative; }
         .emergency-badge { position: absolute; top: 15px; right: 15px; background: #ef4444; color: white; padding: 4px 8px; font-size: 11px; font-weight: bold; border-radius: 6px; }
-        .job-title { font-size: 16px; font-weight: bold; color: #f1f5f9; margin-bottom: 5px; }
-        .job-detail { font-size: 14px; color: #94a3b8; margin: 3px 0; }
+        .job-title { font-size: 16px; font-weight: bold; color: #f1f5f9; margin-bottom: 8px; border-bottom: 1px dashed #334155; padding-bottom: 5px; }
+        .job-detail { font-size: 14px; color: #94a3b8; margin: 5px 0; }
         .rate-badge { color: #4ade80; font-weight: bold; font-size: 18px; margin-top: 10px; }
         button.accept-btn { width: 100%; padding: 12px; background: #10b981; color: white; border: none; font-weight: bold; border-radius: 8px; margin-top: 12px; cursor: pointer; }
-        button.accept-btn:hover { background: #059669; }
         .empty-state { text-align: center; color: #64748b; padding: 40px 0; font-size: 14px; }
     </style>
 </head>
@@ -34,18 +32,23 @@
     const SUPABASE_URL = "https://supabase.co";
     const SUPABASE_ANON_KEY = "sb_publishable__JhviMZB09mCgpcekV1zxA_HjwRPvSo";
 
-    function initializeDatabaseConnection() {
-        if (window.supabase && !supabaseClient) {
+    window.onload = function() {
+        if (window.supabase) {
             supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            listenToLiveJobs();
+            
+            // Listen live
+            supabaseClient
+                .channel('schema-db-changes')
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'jobs' }, payload => {
+                    listenToLiveJobs();
+                })
+                .subscribe();
         }
-    }
-
-    initializeDatabaseConnection();
+    };
 
     async function listenToLiveJobs() {
-        initializeDatabaseConnection();
         if (!supabaseClient) return;
-
         const { data: activeJobs } = await supabaseClient
             .from('jobs')
             .select('*')
@@ -53,17 +56,6 @@
             .order('created_at', { ascending: false });
 
         renderJobs(activeJobs);
-    }
-
-    // Connect to the real-time streaming channel inside Supabase
-    if (window.supabase) {
-        initializeDatabaseConnection();
-        supabaseClient
-            .channel('schema-db-changes')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'jobs' }, payload => {
-                listenToLiveJobs();
-            })
-            .subscribe();
     }
 
     function renderJobs(jobsList) {
@@ -77,14 +69,14 @@
         jobsList.forEach(job => {
             const card = document.createElement('div');
             card.className = 'job-card';
-            
             let emergencyTag = job.is_emergency ? '<span class="emergency-badge">🚨 EMERGENCY</span>' : '';
             
+            // DYNAMIC FIX: Now renders actual data entered by the customer
             card.innerHTML = `
                 ${emergencyTag}
-                <div class="job-title">${job.service_type.replace('_', ' ')}</div>
-                <div class="job-detail">👤 Client Reference Profile</div>
-                <div class="job-detail">📞 Mobile Sync Verified</div>
+                <div class="job-title">🛠️ ${job.service_type.replace('_', ' ')}</div>
+                <div class="job-detail">👤 <b>Client:</b> ${job.client_name}</div>
+                <div class="job-detail">📞 <b>Phone:</b> <a href="tel:${job.client_phone}" style="color:#38bdf8;">${job.client_phone}</a></div>
                 <div class="rate-badge">${job.hourly_rate} SAR / hour</div>
                 <button class="accept-btn" onclick="acceptJobTicket(${job.job_id})">⚡ Accept Job Dispatch</button>
             `;
@@ -93,24 +85,16 @@
     }
 
     async function acceptJobTicket(id) {
-        initializeDatabaseConnection();
         const { error } = await supabaseClient
             .from('jobs')
             .update({ job_status: 'ACCEPTED' })
             .eq('job_id', id);
 
         if (!error) {
-            alert("🚀 Ticket Claimed! Proceed to the client site in your car immediately.");
+            alert("🚀 Ticket Claimed! Call the client right now using the blue link.");
             listenToLiveJobs();
-        } else {
-            alert("Error: " + error.message);
         }
     }
-
-    // Start running the live monitor terminal loop
-    listenToLiveJobs();
-    setInterval(listenToLiveJobs, 5000); // Fail-safe auto-refresh loop every 5 seconds
 </script>
-
 </body>
 </html>

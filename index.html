@@ -4,15 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Riyadh On-Demand IT & CCTV Support</title>
-    <!-- Securely loading the real-time Supabase library from CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://jsdelivr.net"></script>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f0f2f5; margin: 0; padding: 15px; }
         .app-container { max-width: 480px; margin: 0 auto; background: white; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); padding: 20px; }
         .header { text-align: center; font-weight: bold; font-size: 22px; color: #1a1a1a; margin-bottom: 20px; }
         .card { background: #f7f9fa; border-radius: 12px; padding: 15px; margin-bottom: 15px; border: 1px solid #eef1f2; }
-        select, button { width: 100%; padding: 14px; margin-top: 10px; border-radius: 10px; border: 1px solid #ccd4d9; font-size: 16px; box-sizing: border-box; }
-        select { background: white; font-weight: 500; }
+        select, input, button { width: 100%; padding: 14px; margin-top: 8px; border-radius: 10px; border: 1px solid #ccd4d9; font-size: 16px; box-sizing: border-box; }
+        select, input { background: white; font-weight: 500; }
         .emergency-box { background: #fff3cd; border: 1px solid #ffeeba; border-radius: 12px; padding: 12px; display: flex; align-items: center; margin: 15px 0; }
         .emergency-box input { width: 22px; height: 22px; margin-right: 12px; cursor: pointer; }
         .emergency-box label { color: #856404; font-weight: bold; font-size: 15px; cursor: pointer; }
@@ -27,6 +26,15 @@
 <div class="app-container">
     <div class="header">📱 Riyadh IT & CCTV On-Demand</div>
     
+    <!-- NEW: Customer Info Fields -->
+    <div class="card">
+        <label style="font-weight:600; color:#4a5568;">Your Name / Business Name:</label>
+        <input type="text" id="clientName" placeholder="e.g. Al-Malqa Cafe / Khalid">
+
+        <label style="font-weight:600; color:#4a5568; margin-top: 12px; display:block;">Your Mobile Number:</label>
+        <input type="tel" id="clientPhone" placeholder="e.g. 05XXXXXXXX">
+    </div>
+
     <div class="card">
         <label style="font-weight:600; color:#4a5568;">Select Required Technical Support:</label>
         <select id="serviceType">
@@ -36,7 +44,6 @@
         </select>
     </div>
 
-    <!-- Emergency Toggle Box -->
     <div class="emergency-box">
         <input type="checkbox" id="emergencyToggle" onchange="calculateLiveRate()">
         <label for="emergencyToggle">🚨 Emergency Job (Arrive in 60 mins)</label>
@@ -52,85 +59,72 @@
 
 <script>
     var supabaseClient = null;
-    const SUPABASE_URL = "https://xbrwlyawdanwycjrotzi.supabase.co";
+    const SUPABASE_URL = "https://supabase.co";
     const SUPABASE_ANON_KEY = "sb_publishable__JhviMZB09mCgpcekV1zxA_HjwRPvSo";
 
-    // Forces browser to wait until script asset is 100% downloaded
     window.onload = function() {
         if (window.supabase) {
             supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-            document.getElementById('logTerminal').innerHTML = "🟢 <span style="color:#4ade80;">Database Synchronized.</span> Ready for dispatch requests.";
-        } else if (typeof supabase !== 'undefined') {
-            supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-            document.getElementById('logTerminal').innerHTML = "🟢 <span style="color:#4ade80;">Database Synchronized.</span> Ready for dispatch requests.";
-        } else {
-            document.getElementById('logTerminal').innerHTML = "🔴 <span style="color:#f87171;">Error loading database core.</span>";
+            document.getElementById('logTerminal').innerHTML = "🟢 <span style='color:#4ade80;'>Database Synchronized.</span> Ready for dispatch requests.";
         }
     };
 
-    // Automated Riyadh Pricing Engine
     function calculateLiveRate() {
         const isEmergency = document.getElementById('emergencyToggle').checked;
         let activeRate = 120;
-        
         const now = new Date();
         const hour = now.getHours();
-        const day = now.getDay(); // 5 is Friday
+        const day = now.getDay(); 
 
-        if (isEmergency) {
-            activeRate = 250;
-        } else {
+        if (isEmergency) activeRate = 250;
+        else {
             if (day === 5) activeRate = 250;
             else if ((hour >= 7 && hour < 9) || (hour >= 15 && hour < 19)) activeRate = 180;
         }
-        
         document.getElementById('rateText').innerText = `Live Rate: ${activeRate} SAR / hr`;
         return activeRate;
     }
 
-    // Initialize display calculation
     calculateLiveRate();
 
-    // Push Live Job Requests straight into your Database Table
     async function sendJobRequest() {
+        // Collect actual user text entries
+        const inputName = document.getElementById('clientName').value.trim();
+        const inputPhone = document.getElementById('clientPhone').value.trim();
         const service = document.getElementById('serviceType').value;
         const isEmergencyJob = document.getElementById('emergencyToggle').checked;
         const currentRate = calculateLiveRate();
         const terminal = document.getElementById('logTerminal');
 
-        terminal.innerText = "⏳ Initializing secure dispatch query...";
-
-        if (!supabaseClient) {
-            terminal.innerHTML = `🔴 <span style="color:#f87171;">CONNECTION DELAY:</span> Interface core initialization pending. Wait 2 seconds and tap again.`;
+        // Validation rule
+        if (!inputName || !inputPhone) {
+            alert("Please type your Name and Mobile Number first so the technician can contact you!");
             return;
         }
+
+        terminal.innerText = "⏳ Initializing secure dispatch query...";
 
         try {
             const { data, error } = await supabaseClient
                 .from('jobs')
                 .insert([
                     {
-                        client_name: "Riyadh Commercial Client",
-                        client_phone: "+966537248258", // Grounded to your mobile contact profile
+                        client_name: inputName,
+                        client_phone: inputPhone,
                         service_type: service,
                         hourly_rate: currentRate,
                         is_emergency: isEmergencyJob,
                         job_status: "PENDING"
                     }
-                ])
-                .select();
+                ]);
 
             if (error) throw error;
-
-            terminal.innerHTML = `🟢 <span style="color:#4ade80;">SUCCESS!</span> Job record locked in database.<br>Status: PENDING MATCH.`;
-            alert("Your request has been broadcasted to available technicians!");
-
+            terminal.innerHTML = `🟢 <span style='color:#4ade80;'>SUCCESS!</span> Ticket active.`;
+            alert("Your request details were transmitted safely!");
         } catch (err) {
-            terminal.innerHTML = `🔴 <span style="color:#f87171;">CONNECTION ERROR:</span> ${err.message}`;
-            console.error(err);
+            terminal.innerHTML = `🔴 <span style='color:#f87171;'>ERROR:</span> ${err.message}`;
         }
     }
 </script>
-
 </body>
 </html>

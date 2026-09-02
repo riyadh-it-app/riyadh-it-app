@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Riyadh On-Demand IT & CCTV Support</title>
     <!-- Securely loading the real-time Supabase library from CDN -->
-    <script src="https://jsdelivr.net"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f0f2f5; margin: 0; padding: 15px; }
         .app-container { max-width: 480px; margin: 0 auto; background: white; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); padding: 20px; }
@@ -47,24 +47,26 @@
     <button class="dispatch-btn" onclick="sendJobRequest()">📍 Request Immediate Dispatch</button>
 
     <p style="font-weight:600; font-size:14px; margin-top:20px; color:#4a5568;">System Radar Terminal Logs:</p>
-    <div class="status-log" id="logTerminal">System online. Ready for connections.</div>
+    <div class="status-log" id="logTerminal">System online. Connecting...</div>
 </div>
 
 <script>
     var supabaseClient = null;
-    const SUPABASE_URL = "https://supabase.co";
+    const SUPABASE_URL = "https://xbrwlyawdanwycjrotzi.supabase.co";
     const SUPABASE_ANON_KEY = "sb_publishable__JhviMZB09mCgpcekV1zxA_HjwRPvSo";
 
-    // Automated initialization function that can be called safely at any time
-    function initializeDatabaseConnection() {
-        if (window.supabase && !supabaseClient) {
+    // Forces browser to wait until script asset is 100% downloaded
+    window.onload = function() {
+        if (window.supabase) {
             supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-            console.log("Database connection established successfully.");
+            document.getElementById('logTerminal').innerHTML = "🟢 <span style="color:#4ade80;">Database Synchronized.</span> Ready for dispatch requests.";
+        } else if (typeof supabase !== 'undefined') {
+            supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            document.getElementById('logTerminal').innerHTML = "🟢 <span style="color:#4ade80;">Database Synchronized.</span> Ready for dispatch requests.";
+        } else {
+            document.getElementById('logTerminal').innerHTML = "🔴 <span style="color:#f87171;">Error loading database core.</span>";
         }
-    }
-
-    // Try connecting immediately when scripts load
-    initializeDatabaseConnection();
+    };
 
     // Automated Riyadh Pricing Engine
     function calculateLiveRate() {
@@ -86,7 +88,7 @@
         return activeRate;
     }
 
-    // Initialize display rate calculation immediately on start
+    // Initialize display calculation
     calculateLiveRate();
 
     // Push Live Job Requests straight into your Database Table
@@ -96,13 +98,10 @@
         const currentRate = calculateLiveRate();
         const terminal = document.getElementById('logTerminal');
 
-        terminal.innerText = "⏳ Initializing secure connection to database...";
-
-        // Dynamic Fix: Try to connect one more time in case it took long to download from internet
-        initializeDatabaseConnection();
+        terminal.innerText = "⏳ Initializing secure dispatch query...";
 
         if (!supabaseClient) {
-            terminal.innerHTML = `🔴 <span style="color:#f87171;">ERROR:</span> Connection delay. Wait 2 seconds and tap the button again.`;
+            terminal.innerHTML = `🔴 <span style="color:#f87171;">CONNECTION DELAY:</span> Interface core initialization pending. Wait 2 seconds and tap again.`;
             return;
         }
 
@@ -112,7 +111,7 @@
                 .insert([
                     {
                         client_name: "Riyadh Commercial Client",
-                        client_phone: "+966537248258", // Grounded to your exact mobile profile contact
+                        client_phone: "+966537248258", // Grounded to your mobile contact profile
                         service_type: service,
                         hourly_rate: currentRate,
                         is_emergency: isEmergencyJob,
